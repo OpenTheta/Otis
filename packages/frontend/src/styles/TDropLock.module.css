@@ -1,0 +1,96 @@
+.heading {
+    font-family: Poppins, sans-serif;
+    color: rgb(255,255,255);
+    letter-spacing: 4px;
+    text-align: center;
+    line-height: 39.496px;
+    font-size: 30px;
+    margin: 20px;
+    padding-top: 50px;
+}
+.subHeading {
+    color: rgb(255,255,255);
+    font-size: 20px;
+    letter-spacing: 4px;
+    margin: 5px;
+    text-align: center;
+}
+.selectionsTNT20 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    .selection {
+        width: 100%;
+        margin: 36px 10px;
+        display: flex;
+        flex-direction: column; /* Stack items vertically */
+        flex: 1; /* Responsive width: scale with the container */
+        min-width: 300px;
+        align-items: center; /* Center items horizontally */
+        background: rgba(190, 95, 150,0.36);
+        border-style: solid;
+        border-color: rgb(190, 95, 150);
+        max-width: 400px;
+        box-shadow: -15px -10px 0px rgba(190, 95, 150,0.24);
+        border-radius: 30px;
+        .mySelect {
+            min-width: 80%;
+            margin: 5px 12px;
+            background: rgba(102, 255, 255,0.27);
+            color: var(--bs-body-bg);
+            text-align: center;
+            border-radius: 10px;
+            padding: 4px 6px;
+            border-style: solid;
+            border-color: rgb(102,255,255);
+        }
+        .button {
+            margin: 10px;
+            background: var(--color-main);
+        }
+        .button:hover {
+            background: rgb(80, 67, 207);
+        }
+        .inputField {
+            width: 80%;
+            height: 50px;
+            border-color: rgb(102,255,255);
+            border-radius: 10px;
+            background: rgba(102, 255, 255,0.27);
+            font-family: Montserrat, sans-serif;
+            color: var(--bs-body-bg);
+            font-size: 20px;
+            text-align: center;
+            margin-left: 35px;
+            margin-bottom: 5px;
+        }
+        .maxText {
+            margin-bottom: 0px;
+            margin-left: 5px;
+            font-size: 12px;
+            color: rgb(102,255,255);
+        }
+        .maxText:hover {
+            cursor: pointer;
+            margin-top: 20px;
+            margin-bottom: 0;
+            margin-left: 5px;
+            font-size: 12px;
+            color: rgb(102,255,255);
+        }
+    }
+}
+.tDropHoldingContainer {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    .tDropHolding {
+        color: rgba(255,255,255,0.9);
+        margin: 0 10px;
+        .tDropHoldingImg {
+            width: 20px;
+        }
+    }
+}

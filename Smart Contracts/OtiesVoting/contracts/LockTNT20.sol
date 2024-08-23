@@ -137,6 +137,7 @@ contract LockTNT20 is Pausable, AccessControl {
         }
     }
 
+    // TODO: check if this really unstakes exact rawAmount
     function _unstakeRawAmount(uint256 rawAmount) internal {
         uint256 currentHeight = block.number;
 
@@ -263,5 +264,14 @@ contract LockTNT20 is Pausable, AccessControl {
      */
     function getUserLockTime(address userAddress) external view returns (uint) {
         return userLockTime[userAddress];
+    }
+
+    /**
+     * @notice Retrieves the locked Token amount for a specific user.
+     * @param userAddress The address of the user whose lock time is being queried.
+     * @return The lock time of the user in seconds.
+     */
+    function getUserLockedTokenAmount(address userAddress) external view returns (uint) {
+        return userLockInfo[userAddress];
     }
 }

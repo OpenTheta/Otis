@@ -1,0 +1,136 @@
+.proposal {
+    display: block;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+    width: 100%;
+    max-width: 40rem;
+    min-width: 80%;
+    margin: 5px 12px;
+    background: rgba(0, 0, 0, 0.36);
+    color: var(--bs-body-bg);
+    border-radius: 10px;
+    padding: 10px 15px;
+    /*border-style: solid;*/
+    /*border-color: var(--color-secondary);*/
+}
+
+.rowProposer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.9);
+    .tokenImg {
+        width: 18px;
+        height: 18px;
+        margin: 0 5px 2px 2px;
+    }
+    .tokenName {
+        font-size: 14px;
+        margin: 0 5px 2px 2px;
+
+    }
+}
+
+.rowMain {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.rowMain p {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+    white-space: pre-wrap;
+    margin-bottom: 0;
+    text-align: center;
+}
+
+.rowMain h3 {
+    padding-top: 20px;
+}
+
+.rowLinks {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    white-space: nowrap;
+    .link {
+        margin: 0 5px 2px 2px;
+        color: var(--color-logo);
+    }
+}
+
+.time {
+    display: inline-block;
+    min-width: 10ch; /* Adjust as needed to prevent movement */
+}
+
+.optionsContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the options container */
+    margin-top: 10px;
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the text within each option */
+    margin-bottom: 5px;
+    padding: 5px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    width: 100%; /* Ensure all options have the same width */
+    max-width: 300px; /* Set a maximum width for the options */
+    text-align: center; /* Center the text */
+    background: linear-gradient(to right, var(--color-logo) 0%, var(--color-logo) 0%, transparent 0%, transparent 100%) no-repeat;
+    background-clip: content-box; /* Confine the gradient to the content area */
+}
+
+.option:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.selectedOption {
+    border-color: var(--color-logo);
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.voteButton {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: var(--color-logo);
+    color: var(--bs-body-bg);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center; /* Center the text */
+}
+
+.voteButton:hover {
+    background-color: darken(var(--color-logo), 10%);
+}
+
+@media (max-width: 600px) {
+    .rowProposer {
+        flex-direction: column;
+        align-items: center;
+    }
+    .LinkProposer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .rowLinks {
+        justify-content: center; /* Center the group of links */
+    }
+    .rowProposer p {
+        text-align: center;
+    }
+    .proposal div {
+        text-align: center;
+    }
+}

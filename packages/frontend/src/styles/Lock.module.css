@@ -1,0 +1,21 @@
+.container {
+    width: 100%;
+    min-height: 80vh;
+    .heading {
+        font-family: Poppins, sans-serif;
+        color: rgb(255,255,255);
+        letter-spacing: 4px;
+        text-align: center;
+        line-height: 39.496px;
+        font-size: 30px;
+        margin: 20px;
+        padding-top: 50px;
+    }
+    .subHeading {
+        font-family: Poppins, sans-serif;
+        color: rgb(255,255,255);
+        letter-spacing: 4px;
+        margin: 5px;
+        text-align: center;
+    }
+}

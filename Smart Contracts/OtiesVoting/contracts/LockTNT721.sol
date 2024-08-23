@@ -14,9 +14,11 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 contract LockTNT721 is Pausable, AccessControl {
     using EnumerableSet for EnumerableSet.UintSet;
 
+    // Address of the TNT721 contract
+    address public TNT721Contract;
+
     // Mapping to track deposits by user and contract
-    mapping(address => mapping(address => EnumerableSet.UintSet))
-        private _deposits;
+    mapping(address => EnumerableSet.UintSet) private _deposits;
 
     // Mapping to track the total number of tokens staked by each user
     mapping(address => uint) public totalTNT721StakedByUser;
@@ -29,12 +31,10 @@ contract LockTNT721 is Pausable, AccessControl {
     // Events
     event Locked(
         address indexed user,
-        address indexed tnt721Contract,
         uint256 tokenId
     );
     event Unlocked(
         address indexed user,
-        address indexed tnt721Contract,
         uint256 tokenId
     );
     event AdminRoleGranted(address indexed account, address indexed sender);
@@ -45,56 +45,53 @@ contract LockTNT721 is Pausable, AccessControl {
      * @param _defaultAdmin Address of the default admin
      * @param _admin Address of the admin
      */
-    constructor(address _defaultAdmin, address _admin) {
+    constructor(address _defaultAdmin, address _admin, address _tnt721) {
         _setupRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
         _setupRole(ADMIN_ROLE, _admin);
+        TNT721Contract = _tnt721;
     }
 
     /**
      * @dev Function to lock TNT721 tokens into the contract.
-     * @param tnt721Contract Address of the TNT721 contract
      * @param tokenIds Array of token IDs to lock
      */
     function lockTNT721(
-        address tnt721Contract,
         uint256[] calldata tokenIds
     ) public whenNotPaused {
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            IERC721(tnt721Contract).transferFrom(
+            IERC721(TNT721Contract).transferFrom(
                 msg.sender,
                 address(this),
                 tokenIds[i]
             );
-            _deposits[msg.sender][tnt721Contract].add(tokenIds[i]);
-            userLockTime[msg.sender] = block.timestamp;
+            _deposits[msg.sender].add(tokenIds[i]);
 
-            emit Locked(msg.sender, tnt721Contract, tokenIds[i]);
+            emit Locked(msg.sender, tokenIds[i]);
         }
+        userLockTime[msg.sender] = block.timestamp;
         totalTNT721StakedByUser[msg.sender] += tokenIds.length;
     }
 
     /**
      * @dev Function to unlock TNT721 tokens from the contract.
-     * @param tnt721Contract Address of the TNT721 contract
      * @param tokenIds Array of token IDs to unlock
      */
     function unlockTNT721(
-        address tnt721Contract,
         uint256[] calldata tokenIds
     ) public {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             require(
-                _deposits[msg.sender][tnt721Contract].contains(tokenIds[i]),
+                _deposits[msg.sender].contains(tokenIds[i]),
                 "LockTNT721: Token not deposited"
             );
 
-            _deposits[msg.sender][tnt721Contract].remove(tokenIds[i]);
-            IERC721(tnt721Contract).transferFrom(
+            _deposits[msg.sender].remove(tokenIds[i]);
+            IERC721(TNT721Contract).transferFrom(
                 address(this),
                 msg.sender,
                 tokenIds[i]
             );
-            emit Unlocked(msg.sender, tnt721Contract, tokenIds[i]);
+            emit Unlocked(msg.sender, tokenIds[i]);
         }
         totalTNT721StakedByUser[msg.sender] -= tokenIds.length;
     }
@@ -102,16 +99,12 @@ contract LockTNT721 is Pausable, AccessControl {
     /**
      * @dev Function to view the deposits of an account for a specific TNT721 contract.
      * @param account Address of the account
-     * @param tnt721Contract Address of the TNT721 contract
      * @return tokenIds Array of token IDs deposited by the account
      */
     function depositsOf(
-        address account,
-        address tnt721Contract
+        address account
     ) external view returns (uint256[] memory) {
-        EnumerableSet.UintSet storage depositSet = _deposits[account][
-            tnt721Contract
-        ];
+        EnumerableSet.UintSet storage depositSet = _deposits[account];
         uint256[] memory tokenIds = new uint256[](depositSet.length());
 
         for (uint256 i = 0; i < depositSet.length(); i++) {
