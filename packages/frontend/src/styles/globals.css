@@ -21,6 +21,7 @@
     /*--color-main: rgba(60, 67, 207);*/
     /*--color-main2: rgba(190, 95, 150);*/
     --color-main: #2E39FF;
+    --color-main-dark: #252ECC;
     --color-main2: #FF00FF;
     --color-logo: #66FFFF;
     --color-secondary: #FF6699;
@@ -44,7 +45,8 @@ html,
 body,
 #__next {
     min-height: 100vh !important;
-    background: linear-gradient(179deg, var(--color-main), var(--color-main2) 40%, var(--color-logo)) no-repeat;
+    /*background: linear-gradient(179deg, var(--color-main), var(--color-main2) 40%, var(--color-logo)) no-repeat;*/
+    background: linear-gradient(179deg, var(--color-main), var(--color-main2)) no-repeat;
 }
 
 body {

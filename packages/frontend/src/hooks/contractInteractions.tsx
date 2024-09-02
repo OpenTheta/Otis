@@ -329,7 +329,7 @@ const contractInteraction = {
                 name: 'OpenTheta',
                 link: 'https://opentheta.io',
             }, {
-                name: 'Simon Piazolo',
+                name: 'pizajolo',
                 link: 'https://simonpiazolo.de',
             }],
             votes: 3500,

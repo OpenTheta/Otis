@@ -1,0 +1,132 @@
+
+.proposal {
+    display: block;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+    width: 100%;
+    max-width: 40rem;
+    min-width: 80%;
+    margin: 5px 12px;
+    background: rgba(0, 0, 0, 0.36);
+    color: var(--bs-body-bg);
+    border-radius: 10px;
+    padding: 10px 15px;
+    /*border-style: solid;*/
+    /*border-color: var(--color-secondary);*/
+}
+
+.inputField {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.infoIcon {
+    margin-left: 5px;
+    cursor: pointer;
+    position: relative;
+}
+
+.infoIcon:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 1;
+    margin-bottom: 5px;
+}
+
+.linkInput {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.removeButton {
+    background: none;
+    border: none;
+    color: var(--color-main2);
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: 5px;
+}
+
+.addButton {
+    padding: 8px 16px;
+    background-color: var(--color-main);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.addButton:hover {
+    background-color: var(--color-main-dark);
+}
+
+.optionInput {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.optionInput .inputField {
+    flex: 1;
+}
+
+.optionInput .removeButton {
+    margin-left: 5px;
+}
+
+.textArea {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    height: 100px;
+}
+
+.selectField {
+    width: 100%;
+    color: black;
+    /*padding: 8px;*/
+    margin: 5px 0;
+    /*border: 1px solid #ccc;*/
+    border-radius: 4px;
+}
+
+.dateTimeContainer {
+    display: flex;
+    gap: 10px;
+    .dateStartEnd {
+        width: 50%;
+    }
+}
+
+.buttonContainer {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.submitButton, .goBackButton, .publishButton {
+    padding: 8px 16px;
+    background-color: var(--color-main);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.submitButton:hover, .goBackButton:hover, .publishButton:hover {
+    background-color: var(--color-main-dark);
+}

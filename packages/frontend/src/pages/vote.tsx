@@ -4,6 +4,7 @@ import Footer from "@/components/footer";
 import styles from "./../styles/Lock.module.css"
 import {useWeb3ModalAccount} from '@web3modal/ethers/react';
 import ActiveProposals from "@/components/acitveProposals";
+import PastProposals from "@/components/pastProposals";
 
 const NFTPage = () => {
     const { address, chainId, isConnected } = useWeb3ModalAccount();
@@ -21,6 +22,7 @@ const NFTPage = () => {
             <div className="d-flex justify-content-center">
             </div>
             <ActiveProposals/>
+            <PastProposals/>
         </section>
         <Footer/>
     </>;

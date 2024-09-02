@@ -1,15 +1,30 @@
 import styles from "@/styles/Navbar.module.css";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useRouter } from 'next/router';
-import Link from "next/link";
 import Image from "next/image";
+import {useWeb3ModalAccount} from "@web3modal/ethers/react";
 
 
 export default function Navbar() {
 
     const router = useRouter();
     const [isConnectHighlighted, setIsConnectHighlighted] = useState(false);
+    const { address, chainId, isConnected } = useWeb3ModalAccount();
+    const [isProposer, setIsProposer] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    useEffect(() => {
+        if (isConnected) {
+            if(address) {
+                setIsProposer(true);
+                setIsAdmin(true);
+            }
+        } else {
+            if(isProposer) setIsProposer(false);
+            if(isAdmin) setIsAdmin(false);
+        }
+    }, [isConnected]);
 
     const currentRoute = router.pathname;
 
@@ -40,16 +55,26 @@ export default function Navbar() {
                 <div className="collapse navbar-collapse" id="navcol-1">
                     <ul className="navbar-nav me-auto">
                         <li className="nav-item">
-                            <a className={`nav-link ${currentRoute == '/vote' ? styles.highlightSelected : styles.highlight}`} onClick={() => handleClick('vote')}>VOTE</a>
+                            <a className={`nav-link ${currentRoute == '/vote' ? styles.highlightSelected : styles.highlight}`}
+                               onClick={() => handleClick('vote')}>VOTE</a>
                         </li>
                         <li className="nav-item">
-                            <a className={`nav-link ${currentRoute == '/lock' ? styles.highlightSelected : styles.highlight}`}  onClick={() => handleClick('lock')}>LOCK</a>
+                            <a className={`nav-link ${currentRoute == '/lock' ? styles.highlightSelected : styles.highlight}`}
+                               onClick={() => handleClick('lock')}>LOCK</a>
                         </li>
                         <li className="nav-item">
                             <a className={`nav-link ${styles.highlight}`}
                                href="https://opentheta.io/collection/oties" target="_blank"
                                rel="noopener noreferrer">COLLECTION</a>
                         </li>
+                        {isProposer?<li className="nav-item">
+                            <a className={`nav-link ${currentRoute == '/proposer' ? styles.highlightSelected : styles.highlight}`}
+                               onClick={() => handleClick('proposer')}>PROPOSER</a>
+                        </li>:null}
+                        {isAdmin ? <li className="nav-item">
+                            <a className={`nav-link ${currentRoute == '/admin' ? styles.highlightSelected : styles.highlight}`}
+                               onClick={() => handleClick('admin')}>ADMIN</a>
+                        </li>:null}
                     </ul>
                     <div
                         onClick={closeAll}

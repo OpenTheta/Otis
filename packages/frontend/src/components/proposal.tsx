@@ -1,4 +1,4 @@
-import styles from "@/styles/Propoasl.module.css";
+import styles from "@/styles/Proposals.module.css";
 import {useWeb3ModalAccount, useWeb3ModalProvider} from "@web3modal/ethers/react";
 import {useEffect, useState} from "react";
 import {useGlobalState} from "@/hooks/globalState";
@@ -154,6 +154,9 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
             <div className={styles.rowProposer}>
                 <span>Votes Casted: {proposal.votes}</span>
             </div>
+            <div className={styles.rowProposer}>
+                <span>My Votes: {proposal.votes} Casted: {proposal.votes}</span>
+            </div>
             <div className={styles.rowMain}>
                 <h3>{proposal.title}</h3>
             </div>
@@ -174,15 +177,19 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
                             key={index}
                             className={`${styles.option} ${selectedOption === option.name ? styles.selectedOption : ''}`}
                             onClick={() => handleOptionClick(option.name)}
-                            style={{ background: `linear-gradient(to right, var(--color-logo) ${voteRatio}%, transparent ${voteRatio}%) no-repeat` }}
+                            style={{background: `linear-gradient(to right, var(--color-secondary) ${voteRatio}%, transparent ${voteRatio}%) no-repeat`}}
                         >
                             {option.name}
+                            <div className={styles.voteInfo}>
+                                {formatNumber(voteRatio)}% ({option.votes} votes)
+                            </div>
                         </div>
                     );
                 })}
                 <button className={styles.voteButton}
                         onClick={handleVote}
-                        disabled={proposal.startTimestamp > Date.now()}>VOTE</button>
+                        disabled={proposal.startTimestamp > Date.now()}>{selectedOption != null ? 'VOTE' : 'Select Option to Vote'}
+                </button>
             </div>
         </div>
     );
