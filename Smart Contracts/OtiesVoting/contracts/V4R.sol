@@ -3,9 +3,9 @@
 pragma solidity =0.8.19;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts@4.8.2/access/AccessControl.sol";
+import "@openzeppelin/contracts@4.8.2/security/Pausable.sol";
+import "@openzeppelin/contracts@4.8.2/token/ERC20/IERC20.sol";
 import "./Interface/ILockTNT20Interface.sol";
 import "./Interface/ILockTNT721Interface.sol";
 
@@ -60,11 +60,14 @@ contract V4R is Pausable, AccessControl {
     }
 
     // Variables to store configuration parameters for the contract
-    uint public proposalPeriod; // Duration of the proposal period
-    uint public splitTFuelOwnersRatio; // Ratio for splitting TFuel rewards
-    uint public potProposalRewardRatio; // Ratio for proposal reward pot
+    uint public minProposalPeriod; // min duration of the proposal period in seconds
+    uint public maxProposalPeriod; // max duration of the proposal period in seconds
+    uint public splitTFuelOwnersRatio; // Ratio for splitting TFuel rewards per mil, 500 = 50%
+    uint public potProposalRewardRatio; // Ratio for proposal reward pot per mil, 500 = 50%
     uint public maxOptionValue; // Maximum number of voting options
-    uint public votingPeriod; // Duration of the voting period
+    uint public maxVotingTokens; // Maximum number of voting options
+    uint public minVotingPeriod; // min duration of the voting period in seconds
+    uint public maxVotingPeriod; // max duration of the voting period in seconds
     uint public proposalCount; // Count of the proposals
     uint256 public totaltFuelProposalReward; // Total reward for all proposals
     uint256 public totaltFuelClaimedReward; // Total claimed reward amount
@@ -75,7 +78,6 @@ contract V4R is Pausable, AccessControl {
     mapping(address => bool) public isProposer; // Mapping to store proposer status
     mapping(address => bool) public rewardTokens; // Mapping to store reward token status
     mapping(address => TokenInfo) public tokenInfo; // Mapping to store token information
-    mapping(address => bool) public isTokenWhiteListed; // Mapping to store token whitelist status
     mapping(uint => Proposal) public proposals; // Mapping to store proposals
     mapping(address => uint) public latestProposalIds; // Mapping to store latest proposal IDs for each proposer
 
@@ -94,7 +96,6 @@ contract V4R is Pausable, AccessControl {
         uint256 proposaltFuelRatioAmount
     );
     event ProposalCanceled(uint indexed id);
-    event ProposalExecuted(uint indexed id);
     event VoteCast(
         address indexed voter,
         uint indexed proposalId,
@@ -104,18 +105,22 @@ contract V4R is Pausable, AccessControl {
     event RewardClaimed(
         address indexed voter,
         uint indexed proposalId,
-        uint256 rewardTFel,
+        uint256 rewardTFuel,
         uint256 rewardToken
     );
     event AdminRoleGranted(address indexed account, address indexed sender);
-    event ProposalPeriodUpdated(uint newProposalPeriod);
-    event VotingPeriodUpdated(uint newVotingPeriod);
+    event MinProposalPeriodUpdated(uint newMinProposalPeriod);
+    event MinVotingPeriodUpdated(uint newMinVotingPeriod);
+    event MaxProposalPeriodUpdated(uint newMaxProposalPeriod);
+    event MaxVotingPeriodUpdated(uint newMaxVotingPeriod);
     event SplitTFuelOwnersRatioUpdated(uint newSplitTFuelOwnersRatio);
     event PotProposalRewardRatioUpdated(uint newPotProposalRewardRatio);
     event MaxOptionValueUpdated(uint newMaxOptionValue);
+    event MaxVotingTokensUpdated(uint newMaxVotingTokens);
     event TFuelFeeWalletAddressUpdated(address newTFuelFeeWalletAddress);
     event RewardTokenUpdated(address newRewardToken, bool status);
     event AdminRoleRevoked(address indexed account, address indexed sender);
+    event ProposerRoleUpdated(address indexed proposer, bool indexed status);
     event TokenInfoUpdated(
         address indexed token,
         uint votingPower,
@@ -125,24 +130,27 @@ contract V4R is Pausable, AccessControl {
 
     /**
      * @dev Constructor to initialize the contract with necessary parameters and admin roles.
-     * @param _votingPeriod Duration of the voting period
-     * @param _proposalPeriod Duration of the proposal period
+     * @param _minVotingPeriod min duration of the voting period
+     * @param _maxVotingPeriod max duration of the voting period
+     * @param _minProposalPeriod min duration of the proposal period
+     * @param _maxProposalPeriod max duration of the proposal period
      * @param _splitTFuelOwnersRatio Ratio for splitting TFuel rewards
      * @param _potProposalRewardRatio Ratio for proposal reward pot
      * @param _maxOptionValue Maximum number of voting options
      * @param _tFuelFeeWalletAddress Address for TFuel fee wallet
-     * @param _rewardToken Address of the reward token
      * @param _defaultAdmin Address of the default admin
      * @param _admin Address of the admin
      */
     constructor(
-        uint _votingPeriod,
-        uint _proposalPeriod,
+        uint _minVotingPeriod,
+        uint _maxVotingPeriod,
+        uint _minProposalPeriod,
+        uint _maxProposalPeriod,
         uint _splitTFuelOwnersRatio,
         uint _potProposalRewardRatio,
         uint256 _maxOptionValue,
+        uint256 _maxVotingTokens,
         address _tFuelFeeWalletAddress,
-        address _rewardToken,
         address _defaultAdmin,
         address _admin
     ) {
@@ -154,12 +162,14 @@ contract V4R is Pausable, AccessControl {
         _grantRole(ADMIN_ROLE, _admin);
 
         tFuelFeeWalletAddress = _tFuelFeeWalletAddress;
-        votingPeriod = _votingPeriod;
+        minVotingPeriod = _minVotingPeriod;
+        maxVotingPeriod = _maxVotingPeriod;
         splitTFuelOwnersRatio = _splitTFuelOwnersRatio;
         potProposalRewardRatio = _potProposalRewardRatio;
-        proposalPeriod = _proposalPeriod;
+        minProposalPeriod = _minProposalPeriod;
+        maxProposalPeriod = _maxProposalPeriod;
         maxOptionValue = _maxOptionValue;
-        rewardTokens[_rewardToken] = true;
+        maxVotingTokens = _maxVotingTokens;
     }
 
     /**
@@ -193,6 +203,7 @@ contract V4R is Pausable, AccessControl {
         require(_creator != address(0), "V4R: Invalid Creator Address");
         require(isProposer[_creator] != _status, "V4R: Already in same status");
         isProposer[_creator] = _status;
+        emit ProposerRoleUpdated(_creator, _status);
     }
 
     /**
@@ -217,13 +228,17 @@ contract V4R is Pausable, AccessControl {
      * @param votingTokens Array of addresses of the voting tokens
      * @param description Description of the proposal
      * @param votingOptions Array of voting options
+     * @param _startTimestamp start voting timestamp
+     * @param _endTimestamp end voting timestamp
      * @return Proposal ID
      */
     function propose(
         address _rewardToken,
         address[] memory votingTokens,
         string memory description,
-        string[] memory votingOptions
+        string[] memory votingOptions,
+        uint _startTimestamp,
+        uint _endTimestamp
     ) public whenNotPaused returns (uint) {
         require(
             isProposer[msg.sender] == true && rewardTokens[_rewardToken],
@@ -231,15 +246,19 @@ contract V4R is Pausable, AccessControl {
         );
         require(
             bytes(description).length > 0 &&
-                (votingOptions.length > 0 &&
-                    votingOptions.length <= maxOptionValue),
+            (votingOptions.length > 0 &&
+                votingOptions.length <= maxOptionValue),
             "V4R: Invalid Description or votingOptions"
+        );
+        require(
+            (votingTokens.length > 0) &&
+            (votingTokens.length <= maxVotingTokens),
+            "V4R: Invalid voting Tokens amount"
         );
         for (uint256 j = 0; j < votingTokens.length; j++) {
             require(
-                (votingTokens.length > 0) &&
-                    tokenInfo[votingTokens[j]].lockAddress != address(0) &&
-                    (isTokenWhiteListed[votingTokens[j]]),
+                tokenInfo[votingTokens[j]].lockAddress != address(0) &&
+                (tokenInfo[votingTokens[j]].votingPower > 0),
                 "V4R: Invalid Voting Token Addresses"
             );
         }
@@ -266,8 +285,16 @@ contract V4R is Pausable, AccessControl {
 
         payable(tFuelFeeWalletAddress).transfer(ownertFuelRatioAmount);
 
-        uint startTime = proposalPeriod + block.timestamp;
-        uint endTime = startTime + votingPeriod;
+        require(
+            _startTimestamp >= block.timestamp+minProposalPeriod &&
+            _startTimestamp <= block.timestamp+maxProposalPeriod,
+            "V4R: Invalid start timestamp"
+        );
+        require(
+            _endTimestamp >= _startTimestamp+minVotingPeriod &&
+            _endTimestamp <= _startTimestamp+maxVotingPeriod,
+            "V4R: Invalid end timestamp"
+        );
 
         proposalCount++;
 
@@ -275,8 +302,8 @@ contract V4R is Pausable, AccessControl {
 
         newProposal.id = proposalCount;
         newProposal.proposer = msg.sender;
-        newProposal.startTime = startTime;
-        newProposal.endTime = endTime;
+        newProposal.startTime = _startTimestamp;
+        newProposal.endTime = _endTimestamp;
         newProposal.canceled = false;
         newProposal.description = description;
         newProposal.votingOptions = votingOptions;
@@ -303,13 +330,64 @@ contract V4R is Pausable, AccessControl {
             newProposal.proposer,
             description,
             votingOptions,
-            startTime,
-            endTime,
+            _startTimestamp,
+            _endTimestamp,
             proposalTokenRatioAmount,
             proposaltFuelRatioAmount
         );
 
         return newProposal.id;
+    }
+
+    /**
+     * @notice Cancels a Proposal and sends back the Reward token to the Lock Contract.
+     * @dev
+     * @param proposalId The ID of the proposal for which to get the voting options.
+     */
+    function cancelProposal(
+        uint proposalId
+    ) external onlyRole(ADMIN_ROLE) {
+        require(
+            proposalId <= proposalCount,
+            "V4R: Proposal id must be greater than current proposal count"
+        );
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.canceled == false, "V4R: Proposal already canceled");
+        uint256 totalVotes = 0;
+        for (uint256 i = 0; i < proposal.votingOptions.length; i++) {
+            totalVotes = totalVotes + proposal.votes[i];
+        }
+        require(totalVotes == 0, "V4R: Proposal already voted");
+
+        proposal.canceled == true;
+
+        ILockTNT20Interface lockContract = ILockTNT20Interface(
+            tokenInfo[proposal.rewardToken].lockAddress
+        );
+
+        IERC20(proposal.rewardToken).approve(tokenInfo[proposal.rewardToken].lockAddress, proposal.proposalTokenRewardInfo);
+
+        lockContract.addTNT20(proposal.proposalTokenRewardInfo);
+        totaltFuelProposalReward = totaltFuelProposalReward - proposal.proposaltFuelRewardInfo;
+        lasttFuelForRewards = lasttFuelForRewards + proposal.proposaltFuelRewardInfo;
+
+        emit ProposalCanceled(proposalId);
+    }
+
+    /**
+     * @notice Retrieves the voting tokens for a specific proposal.
+     * @dev This function fetches the array of voting tokens associated with the given proposal ID.
+     * @param proposalId The ID of the proposal for which to get the voting options.
+     * @return An array of addresses representing the voting tokens for the specified proposal.
+     */
+    function getProposalVotingTokens(
+        uint proposalId
+    ) public view returns (address[] memory) {
+        require(
+            proposalId <= proposalCount,
+            "V4R: Proposal id must be greater than current proposal count"
+        );
+        return proposals[proposalId].votingTokens;
     }
 
     /**
@@ -356,7 +434,7 @@ contract V4R is Pausable, AccessControl {
 
         uint256 leftTFuel = totalFinaltFuleReward - ownerRatioAmount;
         uint256 proposalRatioAmount = (leftTFuel * potProposalRewardRatio) /
-            1000;
+                    1000;
 
         lasttFuelForRewards =
             tFuelBal -
@@ -371,7 +449,7 @@ contract V4R is Pausable, AccessControl {
         uint256 rewardAmount = ILockTNT20Interface(lockAddress).rewardAmount();
 
         uint256 proposalRatioAmount = (rewardAmount * potProposalRewardRatio) /
-            1000;
+                    1000;
 
         uint256 tokenBefore = IERC20(token).balanceOf(address(this));
         ILockTNT20Interface(lockAddress).claimPendingReward(
@@ -541,32 +619,71 @@ contract V4R is Pausable, AccessControl {
         );
     }
 
-    /**
-     * @dev Function to update the proposal period. Only callable by an admin.
-     * @param _proposalPeriod New proposal period
-     */
-    function setProposalPeriod(
-        uint _proposalPeriod
-    ) public onlyRole(ADMIN_ROLE) {
-        require(_proposalPeriod > 0, "V4R: Invalid proposal period");
-        proposalPeriod = _proposalPeriod;
 
-        emit ProposalPeriodUpdated(_proposalPeriod);
+    /**
+     * @dev Function to claim the reward for multiple proposals.
+     * @param _pids IDs of the proposals
+     */
+    function claimRewards(uint[] memory _pids) public whenNotPaused {
+        for (uint i = 0; i < _pids.length; i++) {
+            claimReward(_pids[i]);
+        }
     }
 
     /**
-     * @notice Setter method to update the voting period.
-     * @dev Only callable by admins with the ADMIN_ROLE.
-     * @param newVotingPeriod The new voting period duration in seconds.
+     * @dev Function to update the minimum proposal period. Only callable by an admin.
+     * @param _minProposalPeriod New min proposal period
      */
-    function setVotingPeriod(
-        uint newVotingPeriod
+    function setMinProposalPeriod(
+        uint _minProposalPeriod
+    ) public onlyRole(ADMIN_ROLE) {
+        require(_minProposalPeriod > 0, "V4R: Invalid min proposal period");
+        minProposalPeriod = _minProposalPeriod;
+
+        emit MinProposalPeriodUpdated(_minProposalPeriod);
+    }
+
+    /**
+     * @dev Function to update the maximum proposal period. Only callable by an admin.
+     * @param _maxProposalPeriod New max proposal period
+     */
+    function setMaxProposalPeriod(
+        uint _maxProposalPeriod
+    ) public onlyRole(ADMIN_ROLE) {
+        require(_maxProposalPeriod > minProposalPeriod, "V4R: Invalid max proposal period");
+        maxProposalPeriod = _maxProposalPeriod;
+
+        emit MaxProposalPeriodUpdated(_maxProposalPeriod);
+    }
+
+    /**
+     * @notice Setter method to update the min voting period.
+     * @dev Only callable by admins with the ADMIN_ROLE.
+     * @param _minVotingPeriod The min voting period duration in seconds.
+     */
+    function setMinVotingPeriod(
+        uint _minVotingPeriod
     ) external onlyRole(ADMIN_ROLE) {
-        require(newVotingPeriod > 0, "V4R: Invalid voting period");
+        require(_minVotingPeriod > 0, "V4R: Invalid min voting period");
 
-        votingPeriod = newVotingPeriod;
+        minVotingPeriod = _minVotingPeriod;
 
-        emit VotingPeriodUpdated(newVotingPeriod);
+        emit MinVotingPeriodUpdated(_minVotingPeriod);
+    }
+
+    /**
+     * @notice Setter method to update the max voting period.
+     * @dev Only callable by admins with the ADMIN_ROLE.
+     * @param _maxVotingPeriod The max voting period duration in seconds.
+     */
+    function setMaxVotingPeriod(
+        uint _maxVotingPeriod
+    ) external onlyRole(ADMIN_ROLE) {
+        require(_maxVotingPeriod > minVotingPeriod, "V4R: Invalid voting period");
+
+        maxVotingPeriod = _maxVotingPeriod;
+
+        emit MaxVotingPeriodUpdated(_maxVotingPeriod);
     }
 
     /**
@@ -612,6 +729,19 @@ contract V4R is Pausable, AccessControl {
     }
 
     /**
+     * @dev Function to update the maximum number of voting options. Only callable by an admin.
+     * @param _maxVotingTokens New maximum number of voting options
+     */
+    function setMaxVotingTokens(
+        uint _maxVotingTokens
+    ) public onlyRole(ADMIN_ROLE) {
+        require(_maxVotingTokens > 0, "V4R: Invalid max option value");
+        maxVotingTokens = _maxVotingTokens;
+
+        emit MaxVotingTokensUpdated(_maxVotingTokens);
+    }
+
+    /**
      * @dev Function to update the TFuel fee wallet address. Only callable by an admin.
      * @param _tFuelFeeWalletAddress New TFuel fee wallet address
      */
@@ -650,7 +780,6 @@ contract V4R is Pausable, AccessControl {
         tokenInfo[token].votingPower = votingPower;
         tokenInfo[token].lockAddress = lockAddress;
         tokenInfo[token].isTNT20 = isTNT20;
-        isTokenWhiteListed[token] = true;
 
         emit TokenInfoUpdated(token, votingPower, lockAddress, isTNT20);
     }
