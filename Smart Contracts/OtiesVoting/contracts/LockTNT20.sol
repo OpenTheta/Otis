@@ -2,9 +2,9 @@
 
 pragma solidity =0.8.19;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts@4.8.2/access/AccessControl.sol";
+import "@openzeppelin/contracts@4.8.2/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts@4.8.2/security/Pausable.sol";
 import "./Interface/IStake.sol";
 
 /**
@@ -125,16 +125,25 @@ contract LockTNT20 is Pausable, AccessControl {
     }
 
     /**
+     * @dev Function to add tokens to the staking contract. User is not able to claim them again
+     * @param _amount Amount of tokens to be added to the staking
+     */
+    function addTNT20(uint256 _amount) external {
+        IERC20(stakeToken).transferFrom(msg.sender, address(this), _amount);
+        IERC20(stakeToken).approve(stakeContract, _amount);
+        IStake(stakeContract).stake(_amount);
+    }
+
+    /**
      * @dev Function to claim pending rewards. Only callable by the authorized address
      */
     function claimPendingReward(uint rawAmount) public {
         require(msg.sender == v4rAddress, "LockTNT20: Invalid Sender Address");
-        if (totalLockAmount != 0) {
-            _unstakeRawAmount(rawAmount);
-            uint256 rewardBal = IERC20(stakeToken).balanceOf(address(this));
-            IERC20(stakeToken).transfer(v4rAddress, rewardBal);
-            emit RewardClaimed(msg.sender, rewardBal);
-        }
+        require(rawAmount <= rewardAmount(), "LockTNT20: Invalid Reward Amount");
+        _unstakeRawAmount(rawAmount);
+        uint256 rewardBal = IERC20(stakeToken).balanceOf(address(this));
+        IERC20(stakeToken).transfer(v4rAddress, rewardBal);
+        emit RewardClaimed(msg.sender, rewardBal);
     }
 
     // TODO: check if this really unstakes exact rawAmount
@@ -171,7 +180,7 @@ contract LockTNT20 is Pausable, AccessControl {
         if (userLockTime[_user] > _pTime) {
             return 0;
         } else {
-            return userLockInfo[_user];
+            return userLockInfo[_user] / 1 ether;
         }
     }
 

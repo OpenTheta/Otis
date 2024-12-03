@@ -7,4 +7,6 @@ interface ILockTNT20Interface {
     function rewardAmount() external returns (uint);
 
     function getUserVotes(address userAddress, uint256 pTime) external view returns (uint);
+
+    function addTNT20(uint256 _amount) external;
 }
