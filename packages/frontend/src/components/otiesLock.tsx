@@ -1,18 +1,18 @@
 import styles from "./../styles/OtiesLock.module.css"
-import {useWeb3ModalAccount, useWeb3ModalProvider} from "@web3modal/ethers/react";
 import {useEffect, useState} from "react";
 import {useGlobalState} from "@/hooks/globalState";
-import {BrowserProvider} from "ethers";
+import {BrowserProvider, Eip1193Provider} from "ethers";
 import Navbar from "@/components/navbar";
 import TDropLock from "@/components/tDropLock";
 import Footer from "@/components/footer";
 import LoadingIndicator from "@/components/loadingIndicator";
 import contractInteractions from "@/hooks/contractInteractions";
+import {useAppKitAccount, useAppKitProvider} from "@reown/appkit/react";
 
 export default function OtiesLock() {
 
-    const { address, chainId, isConnected } = useWeb3ModalAccount();
-    const { walletProvider } = useWeb3ModalProvider();
+    const { address, isConnected } = useAppKitAccount()
+    const { walletProvider } = useAppKitProvider<Eip1193Provider>('eip155')
     const [userOties, setUserOties] = useState<number[]>([]);
     const [userOtiesLocked, setUserOtiesLocked] = useState<number[]>([]);
     const [selectedTokens, setSelectedTokens] = useState<string[]>([]);

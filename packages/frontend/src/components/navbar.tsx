@@ -3,28 +3,16 @@ import {useEffect, useState} from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useRouter } from 'next/router';
 import Image from "next/image";
-import {useWeb3ModalAccount} from "@web3modal/ethers/react";
-
+import {useAppKitAccount} from '@reown/appkit/react'
+import useConnection from "@/hooks/useConnection";
+import LoadingIndicator from "@/components/loadingIndicator";
+import {useGlobalState} from "@/hooks/globalState";
 
 export default function Navbar() {
 
     const router = useRouter();
     const [isConnectHighlighted, setIsConnectHighlighted] = useState(false);
-    const { address, chainId, isConnected } = useWeb3ModalAccount();
-    const [isProposer, setIsProposer] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-
-    useEffect(() => {
-        if (isConnected) {
-            if(address) {
-                setIsProposer(true);
-                setIsAdmin(true);
-            }
-        } else {
-            if(isProposer) setIsProposer(false);
-            if(isAdmin) setIsAdmin(false);
-        }
-    }, [isConnected]);
+    const [connection, connect] = useConnection();
 
     const currentRoute = router.pathname;
 
@@ -38,6 +26,21 @@ export default function Navbar() {
     const closeAll = () => {
         setIsConnectHighlighted(false);
     };
+
+    let connectButton: JSX.Element;
+    // let connectIcon: JSX.Element = <HeaderIcon />;
+    if (connection.status === 'disconnected') {
+        connectButton = <>Connect</>;
+    } else if (connection.status === 'waiting') {
+        connectButton = <LoadingIndicator/>;
+    } else {
+        const { address } = connection;
+        const addressSlice = `${address.slice(0, 5)}...${address.slice(-4)}`;
+        // connectIcon = <div className={styles.chainIcon}><ChainIcon chainID={connection.chainId} fillColor={'rgba(0,0,0,0)'} lineColor={'black'}/></div>
+        connectButton = <div className={styles.accountInfo}>
+            <div>{addressSlice}</div>
+        </div>;
+    }
 
     return (
         <nav className={`navbar navbar-expand-md py-3 ${styles.navbar}`}>
@@ -67,11 +70,11 @@ export default function Navbar() {
                                href="https://opentheta.io/collection/oties" target="_blank"
                                rel="noopener noreferrer">COLLECTION</a>
                         </li>
-                        {isProposer?<li className="nav-item">
+                        {connection.status =='connected' && connection.isProposer ? <li className="nav-item">
                             <a className={`nav-link ${currentRoute == '/proposer' ? styles.highlightSelected : styles.highlight}`}
                                onClick={() => handleClick('proposer')}>PROPOSER</a>
                         </li>:null}
-                        {isAdmin ? <li className="nav-item">
+                        {connection.status =='connected' && connection.isAdmin ?  <li className="nav-item">
                             <a className={`nav-link ${currentRoute == '/admin' ? styles.highlightSelected : styles.highlight}`}
                                onClick={() => handleClick('admin')}>ADMIN</a>
                         </li>:null}
@@ -79,7 +82,12 @@ export default function Navbar() {
                     <div
                         onClick={closeAll}
                     >
-                        <w3m-button balance={'hide'} size={'md'}/>
+                        {/*<appkit-button balance={'hide'} size={'md'}/>*/}
+                        <button className={`default-btn ${styles.connectBtn}`} onClick={() => connect()}>
+                            {/*<HeaderIcon />*/}
+                            {/*{connectIcon}*/}
+                            {connectButton}
+                        </button>
                     </div>
                 </div>
             </div>

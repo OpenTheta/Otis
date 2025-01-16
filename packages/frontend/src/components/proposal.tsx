@@ -1,45 +1,23 @@
 import styles from "@/styles/Proposals.module.css";
-import {useWeb3ModalAccount, useWeb3ModalProvider} from "@web3modal/ethers/react";
 import {useEffect, useState} from "react";
 import {useGlobalState} from "@/hooks/globalState";
-import {BrowserProvider, ethers} from "ethers";
-import blockchainInteraction from "@/hooks/contractInteractions";
-import LoadingIndicator from "@/components/loadingIndicator";
 import ReactMarkdown from 'react-markdown';
+import {useAppKitAccount, useAppKitProvider} from "@reown/appkit/react";
+import type {Proposal} from "@backend/server/routes/proposerInfo";
+import contractInteraction from "@/hooks/contractInteractions";
+import {BrowserProvider, Eip1193Provider} from "ethers";
 
-
-interface Proposal {
-    id: number;
-    title: string;
-    description: string;
-    links: {
-        name: string;
-        link: string;
-    }[];
+interface Option {
+    name?: string;
+    onChainText: string;
     votes: number;
-    status: string;
-    startTimestamp: number;
-    endTimestamp: number;
-    proposer: string;
-    rewardTokens: {
-        name: string;
-        address: string | null;
-        amount: number;
-    }[];
-    votingTokens: {
-        name: string;
-        address: string
-    }[];
-    options: {
-        name: string;
-        votes: number;
-    }[];
-    userVote?: number;
+    onChainId: number;
 }
 
 export default function Proposal({ proposal }: { proposal: Proposal }) {
-    const { address, chainId, isConnected } = useWeb3ModalAccount()
-    const { walletProvider } = useWeb3ModalProvider()
+    const { address, isConnected } = useAppKitAccount()
+    const { walletProvider } = useAppKitProvider<Eip1193Provider>('eip155')
+
 
     const [time, setTime] = useState("");
     const [userTDropLocked, setUserTDropLocked] =  useState(0);
@@ -49,9 +27,9 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
     const [inputValueLock, setInputValueLock] = useState<number | ''>('');
     const [inputValueUnlock, setInputValueUnlock] = useState<number | ''>('');
     const [showNotification, setShowNotification] = useGlobalState('notification')
-    const [selectedOption, setSelectedOption] = useState<string | null>(null);
+    const [selectedOption, setSelectedOption] = useState<Option | null>(null);
 
-    const handleOptionClick = (option: string) => {
+    const handleOptionClick = (option: Option) => {
         setSelectedOption(option);
     };
 
@@ -108,9 +86,11 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
         }, 3000);
     };
 
-    const handleVote = () => {
+    const handleVote = async () => {
         if (selectedOption) {
             // Handle the vote submission logic here
+            const ethersProvider = new BrowserProvider(walletProvider);
+            await contractInteraction.vote(proposal.id, selectedOption.onChainId, ethersProvider);
             console.log(`Voted for: ${selectedOption}`);
         }
     };
@@ -129,16 +109,25 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
         <div key={proposal.id} className={styles.proposal}>
             <div className={styles.rowProposer}>
                 <span>Proposer: {formatAddress(proposal.proposer)}</span>
-                <span>{proposal.startTimestamp < Date.now() ? "ENDS IN: " + time : "STARTS IN:" + time}</span>
+                <span>{proposal.startTimestamp < Date.now() ? "ENDS IN: " + time : "STARTS IN: " + time}</span>
             </div>
             <div className={styles.rowProposer}>
                 <span>Reward Pool: {
-                    proposal.rewardTokens.map((token, index) => (
-                        <span key={index}>
-                            {formatNumber(token.amount)}
-                            <img className={styles.tokenImg} src={`./${token.name.toLowerCase()}_token.svg`}
-                                 alt={token.name}/>
-                        </span>))
+                    <>
+                        <span>
+                        {formatNumber(proposal.tfuelPotAmount)}
+                            <img className={styles.tokenImg}
+                                 src={`./tfuel_token.svg`}
+                                 alt="TFuel"/>
+                    </span>
+                        <span>
+                        {formatNumber(proposal.rewardToken.amount)}
+                            <img className={styles.tokenImg}
+                                 src={`./${proposal.rewardToken.address.toLowerCase()}_token.svg`}
+                                 alt={proposal.rewardToken.name}/>
+                    </span>
+                    </>
+
                 }
                 </span>
             </div>
@@ -146,7 +135,7 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
                 <span>Voting Tokens: {
                     proposal.votingTokens.map((token, index) => (
                         <span className={styles.tokenName} key={index}>
-                            {token.name}
+                            {token.name ? token.name : token.address}
                         </span>))
                 }
                 </span>
@@ -155,13 +144,13 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
                 <span>Votes Casted: {proposal.votes}</span>
             </div>
             <div className={styles.rowProposer}>
-                <span>My Votes: {proposal.votes} Casted: {proposal.votes}</span>
+                <span>My Votes: {proposal.userVote ? proposal.userVote.votes : 0} Casted: {proposal.userVote && proposal.userVote.optionID ? proposal.userVote.votes : 0}</span>
             </div>
             <div className={styles.rowMain}>
                 <h3>{proposal.title}</h3>
             </div>
             <div className={styles.rowMain}>
-                <ReactMarkdown>{proposal.description}</ReactMarkdown>
+                <ReactMarkdown>{proposal.description ? proposal.description : proposal.onChainDescription}</ReactMarkdown>
             </div>
             <div className={styles.rowLinks}>
                 {proposal.links.map((link, index) => (
@@ -175,21 +164,24 @@ export default function Proposal({ proposal }: { proposal: Proposal }) {
                     return (
                         <div
                             key={index}
-                            className={`${styles.option} ${selectedOption === option.name ? styles.selectedOption : ''}`}
-                            onClick={() => handleOptionClick(option.name)}
+                            className={`${styles.option} ${selectedOption?.onChainText === option.onChainText ? styles.selectedOption : ''}`}
+                            onClick={() => handleOptionClick(option)}
                             style={{background: `linear-gradient(to right, var(--color-secondary) ${voteRatio}%, transparent ${voteRatio}%) no-repeat`}}
                         >
-                            {option.name}
-                            <div className={styles.voteInfo}>
-                                {formatNumber(voteRatio)}% ({option.votes} votes)
+                            {option.name ? option.name : option.onChainText}
+                            <div className={styles.voteInfo}>{
+                                proposal.startTimestamp > Date.now() ?
+                                    `On-Chain text: ${option.onChainText}` :
+                                    `${formatNumber(voteRatio)}% (${option.votes}) votes`
+                            }
                             </div>
                         </div>
                     );
                 })}
-                <button className={styles.voteButton}
+                {!(proposal.startTimestamp > Date.now()) ? <button className={styles.voteButton}
                         onClick={handleVote}
-                        disabled={proposal.startTimestamp > Date.now()}>{selectedOption != null ? 'VOTE' : 'Select Option to Vote'}
-                </button>
+                        disabled={(proposal.startTimestamp) > Date.now()}>{selectedOption != null ? 'VOTE' : 'Select Option to Vote'}
+                </button> : null}
             </div>
         </div>
     );

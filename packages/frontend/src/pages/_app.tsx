@@ -1,12 +1,14 @@
 import "@/styles/globals.css";
-import { createWeb3Modal, defaultConfig } from "@web3modal/ethers/react";
+// import { createWeb3Modal, defaultConfig } from "@web3modal/ethers/react";
 import type { AppProps } from "next/app";
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import Notification from "@/components/notification";
 import {useGlobalState} from "@/hooks/globalState";
+import { createAppKit } from '@reown/appkit/react'
+import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 
-const theta = {
+export const theta = {
     id: 361,
     name: 'Theta Mainnet',
     network: 'theta',
@@ -25,9 +27,24 @@ const theta = {
     },
 };
 
-const chains = [
-    theta
-];
+export const thetaTestnet = {
+    id: 365,
+    name: 'Theta Testnet',
+    network: 'theta',
+    nativeCurrency: {
+        decimals: 18,
+        name: 'TFUEL',
+        symbol: 'TFUEL',
+    },
+    rpcUrls: {
+        public: { http: ['https://eth-rpc-api-testnet.thetatoken.org'] },
+        default: { http: ['https://eth-rpc-api-testnet.thetatoken.org'] },
+    },
+    blockExplorers: {
+        etherscan: { name: 'Theta Explorer', url: 'https://testnet-explorer.thetatoken.org/' },
+        default: { name: 'Theta Explorer', url: 'https://testnet-explorer.thetatoken.org/' },
+    },
+};
 
 // 1. Get projectID at https://cloud.walletconnect.com
 
@@ -40,42 +57,17 @@ const metadata = {
     icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
 
-const mainnet = {
-    chainId: 361,
-    name: 'Theta Mainnet',
-    currency: 'TFUEL',
-    explorerUrl: 'https://explorer.thetatoken.org',
-    rpcUrl: 'https://eth-rpc-api.thetatoken.org'
-}
-
-const testnet = {
-    chainId: 365,
-    name: 'Theta Testnet',
-    currency: 'TFUEL',
-    explorerUrl: 'https://testnet-explorer.thetatoken.org',
-    rpcUrl: 'https://eth-rpc-api-testnet.thetatoken.org/rpc'
-}
-
-// 4. Create Ethers config
-const ethersConfig = defaultConfig({
-    /*Required*/
+createAppKit({
+    adapters: [new EthersAdapter()],
+    networks: [theta, thetaTestnet],
     metadata,
-    /*Optional*/
-    enableEIP6963: true, // true by default
-    enableInjected: true, // true by default
-    enableCoinbase: true, // true by default
-    rpcUrl: '...', // used for the Coinbase SDK
-    defaultChainId: 361, // used for the Coinbase SDK
-})
-
-// 5. Create a Web3Modal instance
-createWeb3Modal({
-    ethersConfig,
-    chains: [mainnet],
     projectId,
-    enableAnalytics: true, // Optional - defaults to your Cloud configuration
     tokens: {
-        361: {
+        "eip155:365": {
+            address: '0xf1ba704e6483cede432bc1f7fc6082fdef8d3ac4',
+            image: '/nitro_token.png' //optional
+        },
+        "eip155:361": {
             address: '0xf1ba704e6483cede432bc1f7fc6082fdef8d3ac4',
             image: '/nitro_token.png' //optional
         }
@@ -84,11 +76,34 @@ createWeb3Modal({
         365: 'theta_token.svg',
         361: 'theta_token.svg',
     },
+    features: {
+        swaps: false,
+        onramp: false,
+        legalCheckbox: true,
+        socials: false,
+        email: false,
+        analytics: true,
+    },
     themeVariables: {
         '--w3m-color-mix': 'rgb(112,0,133)',
         '--w3m-accent': 'rgb(127,0,196)',
         '--w3m-color-mix-strength': 10
-    }
+    },
+    privacyPolicyUrl: 'https://www.myprivacypolicy.com',
+    termsConditionsUrl: 'https://www.mytermsandconditions.com',
+    customWallets: [
+        {
+            id: 'ThetaWallet',
+            name: 'Theta Wallet',
+            homepage: 'www.thetatoken.org', // Optional
+            image_url: 'thetawallet.webp', // Optional
+            mobile_link: 'mobile_link', // Optional - Deeplink or universal
+            app_store: 'https://apps.apple.com/de/app/theta-wallet/id1451094550', // Optional
+            play_store: 'https://play.google.com/store/apps/details?id=org.theta.wallet' // Optional
+        }
+    ],
+    allWallets: 'HIDE',
+    enableCoinbase: false
 })
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -103,7 +118,6 @@ export default function App({ Component, pageProps }: AppProps) {
     return (
         <>
             {ready ? (
-                // <WagmiConfig config={wagmiConfig}>
                 <>
                     <Head>
                         <meta charSet="utf-8"/>
@@ -133,7 +147,6 @@ export default function App({ Component, pageProps }: AppProps) {
                     {showNotification.show && <Notification/>}
                     <Component {...pageProps} />
                 </>
-                // </WagmiConfig>
             ) : null}
         </>
     );

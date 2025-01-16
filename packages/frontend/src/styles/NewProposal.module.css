@@ -23,6 +23,10 @@
     border-radius: 4px;
 }
 
+.inputField:disabled {
+    background-color: #f9f9f9;
+}
+
 .infoIcon {
     margin-left: 5px;
     cursor: pointer;
@@ -46,8 +50,8 @@
 
 .linkInput {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 5px;
+    margin-bottom: 5px;
 }
 
 .removeButton {
@@ -66,10 +70,17 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    margin-bottom: 5px;
 }
 
 .addButton:hover {
     background-color: var(--color-main-dark);
+}
+
+.addButton:disabled {
+    background-color: #ccc;
+    color: #666;
+    cursor: not-allowed;
 }
 
 .optionInput {
@@ -93,6 +104,10 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     height: 100px;
+}
+
+.textArea:disabled {
+    background-color: #f9f9f9;
 }
 
 .selectField {

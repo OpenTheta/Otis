@@ -37,3 +37,13 @@
 .highlightSelected:hover {
     cursor: pointer;
 }
+
+.connectBtn {
+    background-color: var(--color-main2);
+    color: var(--color-main);
+    border: none;
+    border-radius: 5px;
+    padding: 5px 20px;
+    font-size: 16px;
+    font-weight: bold;
+}

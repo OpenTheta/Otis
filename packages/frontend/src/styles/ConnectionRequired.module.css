@@ -1,0 +1,10 @@
+.connectBtn {
+    background-color: var(--color-main2);
+    color: var(--color-main);
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    margin-left: 10px;
+}

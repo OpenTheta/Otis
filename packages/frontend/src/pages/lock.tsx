@@ -2,12 +2,12 @@
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import styles from "./../styles/Lock.module.css"
-import {useWeb3ModalAccount} from '@web3modal/ethers/react';
 import TDropLock from "@/components/tDropLock";
 import OtiesLock from "@/components/otiesLock";
+import {useAppKitAccount} from "@reown/appkit/react";
 
 const NFTPage = () => {
-    const { address, chainId, isConnected } = useWeb3ModalAccount();
+    const { address, isConnected } = useAppKitAccount()
 
     return <>
         <Navbar/>

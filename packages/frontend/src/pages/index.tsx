@@ -1,5 +1,4 @@
 import {useRouter} from "next/router";
-import {useWeb3ModalAccount} from '@web3modal/ethers/react';
 import Navbar from "@/components/navbar";
 import styles from "@/styles/Home.module.css";
 import {useEffect, useState} from "react";
@@ -9,7 +8,6 @@ import Footer from "@/components/footer";
 export default function Home() {
 
     const router = useRouter();
-    const { address, chainId, isConnected } = useWeb3ModalAccount()
 
     const handleClick = (route: string) => {
         // Navigate to the about page

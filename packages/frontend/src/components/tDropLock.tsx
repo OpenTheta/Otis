@@ -1,15 +1,15 @@
 import styles from "@/styles/TDropLock.module.css";
-import {useWeb3ModalAccount, useWeb3ModalProvider} from "@web3modal/ethers/react";
 import {useEffect, useState} from "react";
 import {useGlobalState} from "@/hooks/globalState";
 import contractInteractions from "@/hooks/contractInteractions";
-import {BrowserProvider, ethers} from "ethers";
+import {BrowserProvider, Eip1193Provider, ethers} from "ethers";
 import blockchainInteraction from "@/hooks/contractInteractions";
 import LoadingIndicator from "@/components/loadingIndicator";
+import {useAppKitAccount, useAppKitProvider} from "@reown/appkit/react";
 
 export default function TDropLock() {
-    const { address, chainId, isConnected } = useWeb3ModalAccount()
-    const { walletProvider } = useWeb3ModalProvider()
+    const { address, isConnected } = useAppKitAccount()
+    const { walletProvider } = useAppKitProvider<Eip1193Provider>('eip155')
 
     const [userTDrop, setUserTDrop] = useState(0);
     const [userTDropLocked, setUserTDropLocked] =  useState(0);
@@ -108,9 +108,9 @@ export default function TDropLock() {
         <>
             <h1 className={styles.heading}>TDrop</h1>
             <div className={styles.tDropHoldingContainer}>
-                <span className={styles.tDropHolding}>Holding: <b>{formatNumber(userTDrop)}</b> <img className={styles.tDropHoldingImg} src={'/tdrop_token.svg'}/></span>
+                <span className={styles.tDropHolding}>Holding: <b>{formatNumber(userTDrop)}</b> <img className={styles.tDropHoldingImg} src={'/0x11cac290c3a12744dc7cb647e7b6032303c64152_token.svg'}/></span>
                 <span className={styles.tDropHolding}>Locked: <b>{formatNumber(userTDropLocked)}</b> <img
-                    className={styles.tDropHoldingImg} src={'/tdrop_token.svg'}/></span>
+                    className={styles.tDropHoldingImg} src={'/0x11cac290c3a12744dc7cb647e7b6032303c64152_token.svg'}/></span>
             </div>
             <div className={styles.selectionsTNT20}>
                 <div className={styles.selection}>

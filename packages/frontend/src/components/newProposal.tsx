@@ -3,6 +3,15 @@ import { useEffect, useState } from "react";
 import styles from "./../styles/NewProposal.module.css";
 import Navbar from "@/components/navbar";
 import Select from "react-select";
+import {Settings} from "@backend/server/routes/proposerInfo";
+import contractInteractions from "@/hooks/contractInteractions";
+import {provider} from "std-env";
+import {useAppKitProvider} from "@reown/appkit/react";
+import {BrowserProvider, Eip1193Provider} from "ethers";
+import {postUserAPI} from "@/hooks/useAPI";
+import {UpdateProposalData} from "@backend/server/routes/updateProposal";
+import useConnection from "@/hooks/useConnection";
+import {validateLinks} from "@/pages/proposer";
 
 interface Proposal {
     id: number;
@@ -45,16 +54,33 @@ interface Proposer {
     pastProposals: Proposal[];
 }
 
-export default function NewProposal({ availableVotingTokens, availableRewardTokens, onClose }: { availableVotingTokens: Token[], availableRewardTokens: Token[], onClose: () => void }) {
+function formatDateToLocal(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+export default function NewProposal({ availableVotingTokens, availableRewardTokens, settings, onClose }: { availableVotingTokens: Token[], availableRewardTokens: Token[], settings: Settings, onClose: () => void }) {
+    const { walletProvider } = useAppKitProvider<Eip1193Provider>('eip155')
+    const [connection] = useConnection();
+
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [onChainDescription, setonChainDescription] = useState("");
     const [links, setLinks] = useState<{ name: string, link: string }[]>([{ name: "", link: "" }]);
     const [votingTokens, setVotingTokens] = useState<Token[]>([]);
-    const [rewardTokens, setRewardTokens] = useState<Token[]>([]);
-    const [startTime, setStartTime] = useState("");
-    const [endTime, setEndTime] = useState("");
-    const [options, setOptions] = useState<string[]>(["", ""]);
+    const [rewardToken, setRewardToken] = useState<Token>({ name: "", address: "" });
+    const [startTime, setStartTime] = useState<number>();
+    const [endTime, setEndTime] = useState<number>();
+    const [options, setOptions] = useState<{offChain: string, onChain: string}[]>([{offChain: "", onChain: ""}, {offChain: "", onChain: ""}]);
     const [formStatus, setFormStatus] = useState<"editing" | "validated" | "submitted" | "published">("editing");
+    const [newProposalID, setNewProposalID] = useState<number>();
+
+    const Now = new Date();
 
     const handleLinkChange = (index: number, field: 'name' | 'link', value: string) => {
         const newLinks = [...links];
@@ -74,15 +100,16 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
         }
     };
 
-    const handleOptionChange = (index: number, value: string) => {
+    const handleOptionChange = (index: number, type: "onChain" | "offChain", value: string) => {
         const newOptions = [...options];
-        newOptions[index] = value;
+        if(type === "onChain") newOptions[index].onChain = value;
+        else newOptions[index].offChain = value;
         setOptions(newOptions);
     };
 
     const addOption = () => {
-        if (options.length < 8) {
-            setOptions([...options, ""]);
+        if (options.length < settings.maxOptionValue) {
+            setOptions([...options, {offChain: "", onChain: ""}]);
         }
     };
 
@@ -92,33 +119,57 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
         }
     };
 
-    const validateForm = () => {
-        if (!title) return false;
-        if (!description) return false;
-        for (const link of links) {
-            if ((link.name && !link.link) || (!link.name && link.link)) return false;
-        }
-        if (votingTokens.length === 0) return false;
-        if (options.filter(option => option).length < 2) return false;
-        const now = new Date().toISOString();
-        if (startTime <= now) return false;
-        return endTime > startTime;
-
+    const validateForm = () : string => {
+        if (!title) return 'Please fill out the title.';
+        if (!onChainDescription) return 'Please fill out the on-chain description.';
+        if (!description) return 'Please fill out the description.';
+        setLinks(validateLinks(links))
+        if (votingTokens.length === 0) return 'Please select at least one voting token.';
+        if (rewardToken.address === '') return 'Please select a reward token.';
+        if (options.filter(option => option.onChain?.trim() !== '').length < 2) return 'Please fill out at least two on-chain options.';
+        if (!startTime || startTime < Now.getTime() + settings.minProposalPeriod *1000 + 600000) return `Start time must be enough in the future. (Earliest: ${new Date(Now.getTime() + settings.minProposalPeriod *1000 + 600000).toLocaleString()})`;
+        if (startTime > Now.getTime() + settings.maxProposalPeriod *1000) return `Start time must be sooner then ${new Date(Now.getTime() + settings.maxProposalPeriod *1000).toLocaleString()}`;
+        if (!endTime || endTime < startTime + settings.minVotingPeriod *1000) return `End Voting time must be later then ${new Date(Now.getTime() + settings.minVotingPeriod *1000 + 600000).toLocaleString()}`;
+        if (endTime > startTime + settings.maxVotingPeriod *1000) return `End Voting time must be sooner then ${new Date(startTime + settings.maxVotingPeriod *1000).toLocaleString()}`;
+        return 'success';
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (formStatus === "editing") {
-            if (validateForm()) {
+            const validationResult = validateForm();
+            if (validationResult === 'success') {
                 setFormStatus("validated");
             } else {
-                alert("Please fill out all required fields correctly.");
+                alert("Please fill out all required fields correctly: "+ validationResult);
             }
-        } else if (formStatus === "validated") {
+        } else if (formStatus === "validated" && startTime && endTime) {
             // Simulate submission to chain
-            setTimeout(() => {
+            const ethersProvider = new BrowserProvider(walletProvider)
+            const proposalID = await contractInteractions.propose(onChainDescription, options.map(option => option.onChain), rewardToken.address, votingTokens.map(token => token.address), startTime/1000, endTime/1000, ethersProvider);
+            if(proposalID > 0) {
+                setNewProposalID(proposalID);
                 setFormStatus("submitted");
-            }, 1000);
+            } else {
+                alert("Error when creating Proposal! :(");
+            }
         } else if (formStatus === "submitted") {
+            if(connection.status == 'connected') {
+                const data = await postUserAPI<UpdateProposalData>('updateProposal', {
+                    address: connection.address,
+                    update: {
+                        id: newProposalID,
+                        title: title,
+                        description: description,
+                        links: links,
+                        options: options,
+                    }
+                });
+
+                if (data.success && data.updatedProposal) {
+                    console.log("Proposal updated successfully");
+                    onClose();
+                }
+            }
             setFormStatus("published");
         }
     };
@@ -145,6 +196,20 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
                     />
                 </div>
                 <div>
+                    <label>On-Chain Description
+                        <span className={styles.infoIcon}
+                              title="On Chain desciption should be short!">ℹ️</span>
+                    </label>
+                    <input
+                        type="text"
+                        value={onChainDescription}
+                        onChange={(e) => setonChainDescription(e.target.value)}
+                        className={styles.inputField}
+                        disabled={formStatus !== "editing"}
+                        maxLength={100}
+                    />
+                </div>
+                <div>
                     <label>
                         Proposal Description
                         <span className={styles.infoIcon}
@@ -158,7 +223,10 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
                     />
                 </div>
                 <div>
-                    <label>Links</label>
+                    <label>Links
+                        <span className={styles.infoIcon}
+                              title="Dosen't need to be filled!">ℹ️</span>
+                    </label>
                     {links.map((link, index) => (
                         <div key={index} className={styles.linkInput}>
                             <input
@@ -177,17 +245,24 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
                                 className={styles.inputField}
                                 disabled={formStatus !== "editing"}
                             />
-                            <button onClick={() => removeLink(index)} className={styles.removeButton} disabled={formStatus !== "editing"}>x</button>
+                            <button onClick={() => removeLink(index)} className={styles.removeButton}
+                                    disabled={formStatus !== "editing"}>x
+                            </button>
                         </div>
                     ))}
-                    <button onClick={addLink} className={styles.addButton} disabled={formStatus !== "editing"}>Add Link</button>
+                    <button onClick={addLink} className={styles.addButton} disabled={formStatus !== "editing"}>Add
+                        Link
+                    </button>
                 </div>
                 <div>
-                    <label>Voting Tokens</label>
+                    <label>Voting Tokens
+                        <span className={styles.infoIcon}
+                              title={`At least select one! (Max. ${settings.maxVotingTokens})`}>ℹ️</span>
+                    </label>
                     <Select
                         isMulti
-                        options={availableVotingTokens.map(token => ({ value: token.address, label: token.name }))}
-                        value={votingTokens.map(token => ({ value: token.address, label: token.name }))}
+                        options={availableVotingTokens.map(token => ({value: token.address, label: token.name}))}
+                        value={votingTokens.map(token => ({value: token.address, label: token.name}))}
                         onChange={(selectedOptions) => {
                             setVotingTokens(selectedOptions.map(option => ({
                                 name: option.label,
@@ -200,64 +275,92 @@ export default function NewProposal({ availableVotingTokens, availableRewardToke
                 </div>
                 <div>
                     <label>
-                        Reward Tokens
+                        Reward Token
                         <span className={styles.infoIcon}
                               title="TFuel is always included as Reward token!">ℹ️</span>
                     </label>
                     <Select
-                        isMulti
-                        options={availableRewardTokens.map(token => ({value: token.address, label: token.name }))}
-                        value={rewardTokens.map(token => ({ value: token.address, label: token.name }))}
-                        onChange={(selectedOptions) => {
-                            setRewardTokens(selectedOptions.map(option => ({
-                                name: option.label,
-                                address: option.value
-                            })));
+                        options={availableRewardTokens.map(token => ({value: token.address, label: token.name}))}
+                        value={rewardToken?.address
+                            ? {value: rewardToken.address, label: rewardToken.name}
+                            : null}
+                        onChange={(selectedOption) => {
+                            if (!selectedOption) return;
+                            setRewardToken({
+                                name: selectedOption.label,
+                                address: selectedOption.value
+                            });
                         }}
                         className={styles.selectField}
+                        placeholder="Select..."
+                        isClearable={false}
                         isDisabled={formStatus !== "editing"}
                     />
                 </div>
                 <div>
-                    <label>Voting Options</label>
+                    <label>Voting Options
+                        <span className={styles.infoIcon}
+                              title={`On Chain Option musst be set and be unique! (Max. ${settings.maxOptionValue})`}>ℹ️</span>
+                    </label>
                     {options.map((option, index) => (
-                        <div key={index} className={styles.optionInput}>
+                        <div key={index} className={styles.linkInput}>
                             <input
                                 type="text"
-                                placeholder={`Option ${index + 1}`}
-                                value={option}
-                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                placeholder={`Off-Chain Option ${index + 1}`}
+                                value={option.offChain}
+                                onChange={(e) => handleOptionChange(index,"offChain", e.target.value)}
                                 className={styles.inputField}
                                 disabled={formStatus !== "editing"}
                             />
+                            <input
+                                type="text"
+                                placeholder={`On-Chain Option ${index + 1}`}
+                                value={option.onChain}
+                                onChange={(e) => handleOptionChange(index,"onChain", e.target.value)}
+                                className={styles.inputField}
+                                disabled={formStatus !== "editing"}
+                                maxLength={50}
+                            />
                             {options.length > 2 && (
-                                <button onClick={() => removeOption(index)} className={styles.removeButton} disabled={formStatus !== "editing"}>x</button>
+                                <button onClick={() => removeOption(index)} className={styles.removeButton}
+                                        disabled={formStatus !== "editing"}>x</button>
                             )}
                         </div>
                     ))}
                     {options.length < 8 && (
-                        <button onClick={addOption} className={styles.addButton} disabled={formStatus !== "editing"}>Add Option</button>
+                        <button onClick={addOption} className={styles.addButton} disabled={formStatus !== "editing"}>Add
+                            Option</button>
                     )}
                 </div>
                 <div className={styles.dateTimeContainer}>
                     <div className={styles.dateStartEnd}>
-                        <label>Start Time</label>
+                        <label>Start Voting Period
+                            <span className={styles.infoIcon}
+                                  title={`Needs to start after ${new Date(Now.getTime() + settings.minProposalPeriod *1000 + 600000).toLocaleString()}`}>ℹ️</span>
+                        </label>
                         <input
                             type="datetime-local"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
+                            value={ startTime ? formatDateToLocal(new Date(startTime)) : "" }
+                            onChange={(e) => setStartTime(new Date(e.target.value).getTime())}
                             className={styles.inputField}
                             disabled={formStatus !== "editing"}
+                            min={formatDateToLocal(new Date(Now.getTime() + settings.minProposalPeriod *1000 + 600000))}
+                            max={formatDateToLocal(new Date(Now.getTime() + settings.maxProposalPeriod *1000))}
                         />
                     </div>
                     <div className={styles.dateStartEnd}>
-                        <label>End Time</label>
+                        <label>End Voting Period
+                            <span className={styles.infoIcon}
+                                  title={`Needs to start after ${new Date((startTime ? startTime : Now.getTime()) + settings.minVotingPeriod *1000 + 600000).toLocaleString()}`}>ℹ️</span>
+                        </label>
                         <input
                             type="datetime-local"
-                            value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
+                            value={ endTime ? formatDateToLocal(new Date(endTime)) : "" }
+                            onChange={(e) => setEndTime(new Date(e.target.value).getTime())}
                             className={styles.inputField}
                             disabled={formStatus !== "editing"}
+                            min={formatDateToLocal(new Date((startTime ? startTime : Now.getTime()) + settings.minVotingPeriod *1000 + 600000))}
+                            max={formatDateToLocal(new Date((startTime ? startTime : Now.getTime()) + settings.maxVotingPeriod *1000))}
                         />
                     </div>
                 </div>

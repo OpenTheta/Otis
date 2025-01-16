@@ -1,9 +1,11 @@
-import {ethers} from "ethers";
+import {ethers, keccak256, toUtf8Bytes} from "ethers";
+import {Proposal} from "@backend/server/routes/proposerInfo";
 
 const TDROP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_TDROP_ADDRESS;
 const TDROP_LOCK_ADDRESS = process.env.NEXT_PUBLIC_TDROP_LOCK_ADDRESS;
 const OTIES_ADDRESS = process.env.NEXT_PUBLIC_OTIES_ADDRESS;
 const OTIES_LOCK_ADDRESS = process.env.NEXT_PUBLIC_OTIES_LOCK_ADDRESS;
+const V4R_ADDRESS = process.env.NEXT_PUBLIC_V4R_ADDRESS;
 
 const RPC = 'https://eth-rpc-api-testnet.thetatoken.org/rpc' //'https://eth-rpc-api.thetatoken.org/rpc';
 const PROVIDER = new ethers.JsonRpcProvider(RPC);
@@ -50,34 +52,45 @@ const ABI_TNT721_LOCK = [
     "function getUserVotes(address _user, uint256 _pTime) view returns (uint256)"
 ]
 
-interface Proposal {
-    id: number;
-    title: string;
-    description: string;
-    links: {
-        name: string;
-        link: string;
-    }[];
-    votes: number;
-    status: string;
-    startTimestamp: number;
-    endTimestamp: number;
-    proposer: string;
-    rewardTokens: {
-        name: string;
-        address: string | null;
-        amount: number;
-    }[];
-    votingTokens: {
-        name: string;
-        address: string
-    }[];
-    options: {
-        name: string;
-        votes: number;
-    }[];
-    userVote?: number;
-}
+const ABI_V4R = [
+    "function cancelProposal(uint256 proposalId)",
+    "function claimRewards(uint256[] _pids)",
+    "function getReceipt(uint256 proposalId, address voter) view returns (bool hasVoted, uint8 option, uint256 votes, uint256 claimedTokenRewardAmount, uint256 claimedtFuelRewardAmount, bool claimStatus)",
+    "function pendingUsersReward(uint256 _pid, address _user) view returns (uint256, uint256)",
+    "function propose(address _rewardToken, address[] votingTokens, string description, string[] votingOptions, uint256 _startTimestamp, uint256 _endTimestamp) returns (uint256)",
+    "function setMaxOptionValue(uint256 _maxOptionValue)",
+    "function setMaxProposalPeriod(uint256 _maxProposalPeriod)",
+    "function setMaxVotingPeriod(uint256 _maxVotingPeriod)",
+    "function setMaxVotingTokens(uint256 _maxVotingTokens)",
+    "function setMinProposalPeriod(uint256 _minProposalPeriod)",
+    "function setMinVotingPeriod(uint256 _minVotingPeriod)",
+    "function setPotProposalRewardRatio(uint256 _potProposalRewardRatio)",
+    "function setSplitTFuelOwnersRatio(uint256 _splitTFuelOwnersRatio)",
+    "function setTFuelFeeWalletAddress(address _tFuelFeeWalletAddress)",
+    "function setTokenInfo(address token, uint256 votingPower, address lockAddress, bool isTNT20)",
+    "function updateRewardTokenList(address _token, bool _status)",
+    "function updateProposalCreatorList(address _creator, bool _status)",
+    "event MaxOptionValueUpdated(uint256 newMaxOptionValue)",
+    "event MaxProposalPeriodUpdated(uint256 newMaxProposalPeriod)",
+    "event MaxVotingPeriodUpdated(uint256 newMaxVotingPeriod)",
+    "event MaxVotingTokensUpdated(uint256 newMaxVotingTokens)",
+    "event MinProposalPeriodUpdated(uint256 newMinProposalPeriod)",
+    "event MinVotingPeriodUpdated(uint256 newMinVotingPeriod)",
+    "event Paused(address account)",
+    "event PotProposalRewardRatioUpdated(uint256 newPotProposalRewardRatio)",
+    "event ProposalCanceled(uint256 indexed id)",
+    "event ProposalCreated(uint256 indexed id, address indexed proposer, string description, string[] votingOptions, uint256 startTime, uint256 endTime, uint256 proposalTokenRatioAmount, uint256 proposaltFuelRatioAmount)",
+    "event ProposerRoleUpdated(address indexed proposer, bool indexed status)",
+    "event RewardClaimed(address indexed voter, uint256 indexed proposalId, uint256 rewardTFuel, uint256 rewardToken)",
+    "event RewardTokenUpdated(address newRewardToken, bool status)",
+    "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
+    "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
+    "event SplitTFuelOwnersRatioUpdated(uint256 newSplitTFuelOwnersRatio)",
+    "event TFuelFeeWalletAddressUpdated(address newTFuelFeeWalletAddress)",
+    "event TokenInfoUpdated(address indexed token, uint256 votingPower, address lockAddress, bool isTNT20)",
+    "event Unpaused(address account)",
+    "event VoteCast(address indexed voter, uint256 indexed proposalId, uint8 option, uint256 votes)",
+]
 
 
 const contractInteraction = {
@@ -320,53 +333,248 @@ const contractInteraction = {
         }
     },
 
-    getProposals: async function (type: 'active' | 'history', address?: string): Promise<Proposal[]> {
-        return [{
-            id: 1,
-            title: 'Proposal 1',
-            description: '**This is Proposal 1** the first test to see if everything formats correctly. This is Proposal 1 the first test to see if everything formats correctly. This is Proposal 1 the first test to see if everything formats correctly. This is Proposal 1 the first test to see if everything formats correctly!',
-            links: [{
-                name: 'OpenTheta',
-                link: 'https://opentheta.io',
-            }, {
-                name: 'pizajolo',
-                link: 'https://simonpiazolo.de',
-            }],
-            votes: 3500,
-            status: 'active',
-            startTimestamp: new Date().getTime(),
-            endTimestamp: new Date().getTime() + 1000000,
-            proposer: '0x1f871a31CDf8414cb95DA0818432D26b56C54D7D',
-            rewardTokens: [{
-                name: 'TFuel',
-                address: null,
-                amount: 100,
-            }, {
-                name: 'TDrop',
-                address: process.env.NEXT_PUBLIC_TDROP_ADDRESS ? process.env.NEXT_PUBLIC_TDROP_ADDRESS : '',
-                amount: 10000,
-            }],
-            votingTokens: [{
-                name: 'OTIES',
-                address: process.env.NEXT_PUBLIC_OTIES_ADDRESS ? process.env.NEXT_PUBLIC_OTIES_ADDRESS : '',
-            }, {
-                name: 'TDrop',
-                address: process.env.NEXT_PUBLIC_TDROP_ADDRESS ? process.env.NEXT_PUBLIC_TDROP_ADDRESS : '',
-            }],
-            options: [{
-                name: 'Option 1 - This is a very long option name that should be cut off at some point',
-                votes: 0
-            } , {
-                name: 'Option 2',
-                votes: 1000
-            }, {
-                name: 'Option 3',
-                votes: 2500
-            }],
-            userVote: 1000
-        }]
-    }
+    propose: async function (
+        description: string,
+        options: string[],
+        rewardToken: string,
+        votingTokens: string[],
+        startTimestamp: number,
+        endTimestamp: number,
+        provider: ethers.BrowserProvider
+    ): Promise<number> {
+        if (V4R_ADDRESS === undefined) return -1;
 
+        try {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            const signerAddress = await signer.getAddress();
+
+            console.log("Propose Arguments:", {
+                description,
+                options,
+                rewardToken,
+                votingTokens,
+                startTimestamp,
+                endTimestamp,
+            });
+
+            const res = await Promise.all([
+                waitForEventComplex(
+                    provider,
+                    V4R_ADDRESS,
+                    'ProposalCreated(uint256,address)',
+                    [{ index: 2, value: BigInt(signerAddress) }]
+                ),
+                contract.propose(rewardToken, votingTokens, description, options, startTimestamp, endTimestamp, {
+                    gasLimit: 3000000, // Optional: Manually set a higher gas limit
+                }),
+            ]);
+
+            console.log("Propose Result:", res);
+            return res[1];
+        } catch (error: any) {
+            console.error("Error during propose:", error);
+            return -1;
+        }
+    },
+
+    setSettings: async function (type: | "maxOptionValue" | "minProposalPeriod" | "maxProposalPeriod" |
+        "minVotingPeriod" | "maxVotingPeriod" | "potProposalRewardRatio" | "splitTFuelOwnersRatio" |
+        "tFuelFeeWalletAddress", value: string | number, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const contract  = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            if(type === "maxOptionValue") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        "MaxOptionValueUpdated(uint256)"
+                    ),
+                    contract.setMaxOptionValue(value),
+                ]);
+            } else if(type === "minProposalPeriod") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'MinProposalPeriodUpdated(uint256)'
+                    ),
+                    contract.setMinProposalPeriod(value),
+                ]);
+            } else if(type === "maxProposalPeriod") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'MaxProposalPeriodUpdated(uint256)'
+                    ),
+                    contract.setMaxProposalPeriod(value),
+                ]);
+            } else if(type === "minVotingPeriod") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'MinVotingPeriodUpdated(uint256)'
+                    ),
+                    contract.setMinVotingPeriod(value),
+                ]);
+            } else if(type === "maxVotingPeriod") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'MaxVotingPeriodUpdated(uint256)'
+                    ),
+                    contract.setMaxVotingPeriod(value),
+                ]);
+            } else if(type === "potProposalRewardRatio") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'PotProposalRewardRatioUpdated(uint256)'
+                    ),
+                    contract.setPotProposalRewardRatio(value),
+                ]);
+            } else if(type === "splitTFuelOwnersRatio") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'SplitTFuelOwnersRatioUpdated(uint256)'
+                    ),
+                    contract.setSplitTFuelOwnersRatio(value),
+                ]);
+            } else if(type === "tFuelFeeWalletAddress") {
+                await Promise.all([
+                    waitForEventSimple(
+                        provider,
+                        V4R_ADDRESS,
+                        'TFuelFeeWalletAddressUpdated(address)'
+                    ),
+                    contract.setTFuelFeeWalletAddress(value),
+                ]);
+            }
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    },
+
+    setTokenInfo: async function (token: string, votingPower: number, lockAddress: string, isTNT20: boolean, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            await Promise.all([
+                waitForEventSimple(
+                    provider,
+                    V4R_ADDRESS,
+                    'TokenInfoUpdated(address,uint256,address,bool)'
+                ),
+                contract.setTokenInfo(token, votingPower, lockAddress, isTNT20),
+            ]);
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    },
+
+    setIsRewardToken: async function (token: string, isRewardToken: boolean, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            await Promise.all([
+                waitForEventSimple(
+                    provider,
+                    V4R_ADDRESS,
+                    'RewardTokenUpdated(address,bool)'
+                ),
+                contract.updateRewardTokenList(token, isRewardToken),
+            ]);
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    },
+
+    updateProposer: async function (proposer: string, isProposer: boolean, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            await Promise.all([
+                waitForEventComplex(
+                    provider,
+                    V4R_ADDRESS,
+                    'ProposerRoleUpdated(address,bool)',
+                    [
+                        { index: 1, value: BigInt(proposer) },
+                    ]
+                ),
+                contract.updateProposalCreatorList(proposer, isProposer),
+            ]);
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    },
+
+    cancelProposal: async function (proposalId: number, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            await Promise.all([
+                waitForEventComplex(
+                    provider,
+                    V4R_ADDRESS,
+                    'ProposalCanceled(uint256)',
+                    [
+                        { index: 1, value: BigInt(proposalId) },
+                    ]
+                ),
+                contract.cancelProposal(proposalId),
+            ]);
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    },
+
+    vote: async function (proposalId: number, option: number, provider: ethers.BrowserProvider): Promise<boolean> {
+        if(V4R_ADDRESS === undefined) return false;
+        try {
+            const signer = await provider.getSigner();
+            const signerAddress = await signer.getAddress();
+            const contract = new ethers.Contract(V4R_ADDRESS, ABI_V4R, signer);
+            await Promise.all([
+                waitForEventComplex(
+                    provider,
+                    V4R_ADDRESS,
+                    'VoteCast(address,uint256,uint8,uint256)',
+                    [
+                        { index: 1, value: BigInt(signerAddress) },
+                        { index: 2, value: BigInt(proposalId) },
+                    ]
+                ),
+                contract.vote(proposalId, option),
+            ]);
+            return true;
+        } catch (error: any) { // TODO Error handler
+            console.log('error', error);
+            return false;
+        }
+    }
 
 //     mint: async function (tfuelAmount: number, provider: ethers.BrowserProvider) {
 //         try {
@@ -634,6 +842,24 @@ function waitForEventComplex(provider: ethers.BrowserProvider, address: string, 
             }
         );
     })
+}
+
+function waitForEventSimple(
+    provider: ethers.BrowserProvider,
+    address: string,
+    abiEvent: string
+): Promise<ethers.Log> {
+    return new Promise<ethers.Log>((resolve) => {
+        const filter = {
+            address,
+            topics: [ethers.id(abiEvent)], // Only topic 0 is needed
+        };
+
+        provider.on(filter, (log) => {
+            provider.off(filter); // Remove listener after the event is caught
+            resolve(log);
+        });
+    });
 }
 
 export default contractInteraction;
