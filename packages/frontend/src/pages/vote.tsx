@@ -72,7 +72,7 @@ const VotePage = () => {
             ))}
         </div>
     } else {
-        pastProposalsElement = <p>No past proposals</p>
+        pastProposalsElement = <div style={{display: 'flex', alignItems: "center", width: '100%', flexDirection: "column"}}><p>No past proposals</p></div>
     }
 
     return <>

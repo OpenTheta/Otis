@@ -1,4 +1,4 @@
-import Ajv, { ValidateFunction } from "ajv";
+import _Ajv, { ValidateFunction } from "ajv";
 import { Express, NextFunction, Request, Response, Router } from 'express';
 import path from 'path';
 import * as tsj from 'ts-json-schema-generator';
@@ -6,6 +6,8 @@ import ServerError from "../helpers/ServerError.js";
 import passport from "passport";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
+const Ajv = _Ajv as unknown as typeof _Ajv.default;
 
 // Get the current file's directory
 const __filename = fileURLToPath(import.meta.url);

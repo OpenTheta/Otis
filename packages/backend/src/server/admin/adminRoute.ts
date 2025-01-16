@@ -1,4 +1,4 @@
-import Ajv, { ValidateFunction } from "ajv";
+import _Ajv, { ValidateFunction } from "ajv";
 import { Express, NextFunction, Request, Response } from 'express';
 import passport from "passport";
 import path from 'path';
@@ -13,6 +13,7 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const Ajv = _Ajv as unknown as typeof _Ajv.default;
 const ajv = new Ajv({ coerceTypes: true });
 
 const generator = tsj.createGenerator({

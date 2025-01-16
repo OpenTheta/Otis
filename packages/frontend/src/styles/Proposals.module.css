@@ -34,7 +34,7 @@
     .columnTime {
         display: flex;
         flex-direction: column;
-        align-items: end;
+        align-items: flex-end;
         justify-content: center;
         margin: 0 5px 2px 2px;
         .statusActive {
